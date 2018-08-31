@@ -1,0 +1,16 @@
+PODS:
+  - BlueCapKit (0.7.0)
+
+DEPENDENCIES:
+  - BlueCapKit
+
+SPEC REPOS:
+  https://github.com/cocoapods/specs.git:
+    - BlueCapKit
+
+SPEC CHECKSUMS:
+  BlueCapKit: b13b8715d4de6f325971c4dd5bc33598697dad2f
+
+PODFILE CHECKSUM: 53d6b9d8fa556116e858764caa9604bb5c58b5eb
+
+COCOAPODS: 1.5.3
