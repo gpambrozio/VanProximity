@@ -10,9 +10,16 @@ import UIKit
 
 class ViewController: UIViewController {
 
+    @IBOutlet weak var eventsTextView: UITextView!
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
+
+        BTManager.shared.statusStream.onSuccess { [unowned self] (message) in
+            let now = DateFormatter.init()
+            now.dateStyle = .none
+            now.timeStyle = .long
+            self.eventsTextView.text = "\(now.string(from: Date())) \(message)\n\(self.eventsTextView.text ?? "")"
+        }
     }
 
     override func didReceiveMemoryWarning() {

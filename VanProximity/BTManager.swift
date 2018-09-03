@@ -10,11 +10,13 @@ import Foundation
 import CoreLocation
 import CoreBluetooth
 import BlueCapKit
+import UserNotifications
 
 enum AppError : Swift.Error {
     case rangingBeacon
     case started
     case outside
+    case inside
     case unknownState
 }
 public enum CentraError : Error {
@@ -31,18 +33,23 @@ class BTManager {
 
     static let shared = BTManager()
 
-    var beaconRegion: BeaconRegion
-    var beaconRangingFuture: FutureStream<[Beacon]>?
+    private let statusPromise = StreamPromise<String>(capacity: 10)
+    public var statusStream: FutureStream<String> {
+        return statusPromise.stream
+    }
+
+    private var beaconRegion: BeaconRegion
+    private var beaconRangingFuture: FutureStream<RegionState>?
 
     var isRanging = false
 
-    let beaconManager = BeaconManager()
-    let beaconUUID = UUID(uuidString: "A495DEAD-C5B1-4B44-B512-1370F02D74DE")!
+    private let beaconManager = BeaconManager()
+    private let beaconUUID = UUID(uuidString: "A495DEAD-C5B1-4B44-B512-1370F02D74DE")!
 
-    var peripheral: Peripheral?
-    var accelerometerDataCharacteristic: Characteristic?
+    private var peripheral: Peripheral?
+    private var accelerometerDataCharacteristic: Characteristic?
 
-    let manager = CentralManager(options: [CBCentralManagerOptionRestoreIdentifierKey : "us.gnos.BlueCap.central-manager-example" as NSString])
+    private let manager = CentralManager(options: [CBCentralManagerOptionRestoreIdentifierKey : "us.gnos.BlueCap.central-manager-example" as NSString])
 
     private init() {
         beaconRegion = BeaconRegion(proximityUUID: beaconUUID, identifier: "Example Beacon")
@@ -56,39 +63,45 @@ class BTManager {
         guard !beaconManager.isMonitoring else {
             return true
         }
-        beaconRangingFuture = beaconManager.startMonitoring(for: beaconRegion, authorization: .authorizedAlways).flatMap{ [unowned self] state -> FutureStream<[Beacon]> in
+        beaconRangingFuture = beaconManager.startMonitoring(for: beaconRegion, authorization: .authorizedAlways)
+        beaconRangingFuture?.onSuccess { [unowned self] state in
             switch state {
             case .start:
                 self.isRanging = false
-                throw AppError.started
             case .inside:
                 self.setInsideRegion()
                 self.isRanging = true
-                return self.beaconManager.startRangingBeacons(in: self.beaconRegion, authorization: .authorizedAlways)
             case .outside:
                 self.setOutsideRegion()
-                self.beaconManager.stopRangingBeacons(in: self.beaconRegion)
-                throw AppError.outside
             case .unknown:
-                throw AppError.unknownState
+                break
             }
-        }
-        beaconRangingFuture?.onSuccess { [unowned self] beacons in
-            guard self.isRanging else {
-                return
-            }
-        }
-        beaconRangingFuture?.onFailure { [unowned self] error in
-            if error is AppError {
-                return
-            }
-            self.notify("Error: '\(error.localizedDescription)'")
         }
         return true
     }
 
     private func notify(_ message: String) {
         print("Notify: \(message)")
+        statusPromise.success(message)
+        if UIApplication.shared.applicationState != .active {
+            let content = UNMutableNotificationContent()
+            content.title = ""
+            content.body = message
+            content.sound = UNNotificationSound.default()
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+            let center = UNUserNotificationCenter.current()
+            center.add(request)
+            center.getDeliveredNotifications { (notifications) in
+                let idsToRemove = notifications.sorted(by: { (n1, n2) -> Bool in
+                    n2.date < n1.date
+                }).map { $0.request.identifier }
+                guard idsToRemove.count > 10 else { return }
+                DispatchQueue.main.async {
+                    center.removePendingNotificationRequests(withIdentifiers: [] + idsToRemove[10...])
+                }
+            }
+        }
     }
 
     private func present(_ message: String) {
@@ -103,6 +116,7 @@ class BTManager {
         let dataUpdateFuture = manager.whenStateChanges().flatMap { [unowned self] state -> FutureStream<Peripheral> in
             switch state {
             case .poweredOn:
+                self.manager.disconnectAllPeripherals()
                 return self.manager.startScanning(forServiceUUIDs: [serviceUUID], capacity: 10)
             case .poweredOff:
                 throw CentraError.poweredOff
@@ -146,6 +160,7 @@ class BTManager {
                 guard let accelerometerDataCharacteristic = self.accelerometerDataCharacteristic else {
                     throw CentraError.dataCharactertisticNotFound
                 }
+                self.notify("Connected to van")
                 return accelerometerDataCharacteristic.receiveNotificationUpdates(capacity: 10)
             }
 
@@ -164,9 +179,10 @@ class BTManager {
                 self.present("Bluetooth powered off")
             case CentraError.unknown:
                 break
-            case PeripheralError.disconnected:
-                break
-            case PeripheralError.forcedDisconnect:
+            case PeripheralError.disconnected,
+                 CBError.peripheralDisconnected,
+                 PeripheralError.forcedDisconnect:
+                self.notify("Disconnected from van")
                 break
             default:
                 self.present("error: \(error)")
@@ -189,8 +205,12 @@ class BTManager {
         return true
     }
 
+    private var inRegion = false
     private func setInsideRegion() {
-        notify("Entered region '\(self.beaconRegion.identifier)'. Started ranging beacons.")
+        if !inRegion {
+            inRegion = true
+            notify("Entered region.")
+        }
         var backgroundHandler = UIBackgroundTaskInvalid
         backgroundHandler = UIApplication.shared.beginBackgroundTask {
             guard backgroundHandler != UIBackgroundTaskInvalid else { return }
@@ -201,7 +221,10 @@ class BTManager {
     }
 
     private func setOutsideRegion() {
-        notify("Exited region '\(self.beaconRegion.identifier). Stopped ranging beacons.'")
+        if inRegion {
+            inRegion = false
+            notify("Exited region.")
+        }
     }
 
     public func updateLocation(_ location: CLLocation, heading: CLLocationDirection) {
