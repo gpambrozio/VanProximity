@@ -77,19 +77,18 @@ class BTManager {
                 break
             }
         }
+        startCentral()
         return true
     }
 
-    private func notify(_ message: String) {
-        print("Notify: \(message)")
-        statusPromise.success(message)
+    private func addNotification(_ message: String, delay: TimeInterval, identifier: String?) {
         if UIApplication.shared.applicationState != .active {
             let content = UNMutableNotificationContent()
             content.title = ""
             content.body = message
             content.sound = UNNotificationSound.default()
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
-            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
+            let request = UNNotificationRequest(identifier: identifier ?? UUID().uuidString, content: content, trigger: trigger)
             let center = UNUserNotificationCenter.current()
             center.add(request)
             center.getDeliveredNotifications { (notifications) in
@@ -98,10 +97,28 @@ class BTManager {
                 }).map { $0.request.identifier }
                 guard idsToRemove.count > 10 else { return }
                 DispatchQueue.main.async {
-                    center.removePendingNotificationRequests(withIdentifiers: [] + idsToRemove[10...])
+                    center.removeDeliveredNotifications(withIdentifiers: [] + idsToRemove[10...])
                 }
             }
         }
+    }
+
+    private func notify(_ message: String, delay: TimeInterval = 0.1, identifier: String? = nil, cancelsIdentifier: String? = nil) {
+        print("Notify: \(message)")
+        statusPromise.success(message)
+
+        if let cancelsIdentifier = cancelsIdentifier {
+            let center = UNUserNotificationCenter.current()
+            center.getPendingNotificationRequests { [weak self] (notifications) in
+                if notifications.filter({ n -> Bool in n.identifier == cancelsIdentifier }).first != nil {
+                    center.removePendingNotificationRequests(withIdentifiers: [cancelsIdentifier])
+                } else {
+                    self?.addNotification(message, delay: delay, identifier: identifier)
+                }
+            }
+        }
+
+        addNotification(message, delay: delay, identifier: identifier)
     }
 
     private func present(_ message: String) {
@@ -169,7 +186,6 @@ class BTManager {
             case CentraError.dataCharactertisticNotFound:
                 break
             case CentraError.serviceNotFound:
-                self.peripheral?.disconnect()
                 self.present("error: \(error)")
             case CentraError.invalidState:
                 self.present("Invalid state")
@@ -187,6 +203,7 @@ class BTManager {
             default:
                 self.present("error: \(error)")
             }
+            self.peripheral?.disconnect()
             self.manager.reset()
             LocationManager.shared.stopUpdatingLocation()
         }
@@ -199,6 +216,7 @@ class BTManager {
     @discardableResult
     private func writeToDevice(_ command: String) -> Bool {
         guard let accelerometerDataCharacteristic = self.accelerometerDataCharacteristic else {
+            manager.reset()
             return false
         }
         _ = accelerometerDataCharacteristic.write(data: command.data(using: .utf8)!)
@@ -209,26 +227,29 @@ class BTManager {
     private func setInsideRegion() {
         if !inRegion {
             inRegion = true
-            notify("Entered region.")
+            notify("Entered region.", delay: 15, identifier: "enteredRegion", cancelsIdentifier: "leftRegion")
         }
+        startBackgroundHandler()
+    }
+
+    private func startBackgroundHandler() {
         var backgroundHandler = UIBackgroundTaskInvalid
         backgroundHandler = UIApplication.shared.beginBackgroundTask {
             guard backgroundHandler != UIBackgroundTaskInvalid else { return }
             UIApplication.shared.endBackgroundTask(backgroundHandler)
             backgroundHandler = UIBackgroundTaskInvalid
         }
-        startCentral()
     }
 
     private func setOutsideRegion() {
         if inRegion {
             inRegion = false
-            notify("Exited region.")
+            notify("Exited region.", delay: 15, identifier: "leftRegion", cancelsIdentifier: "enteredRegion")
         }
     }
 
     public func updateLocation(_ location: CLLocation, heading: CLLocationDirection) {
-        writeToDevice(String(format: "L:%.1f,%.1f", location.coordinate.latitude, location.coordinate.longitude))
-        writeToDevice(String(format: "A:%.0f;S:%.1f;H:%.0f", 3.281 * location.altitude, location.speed * 3600 / 1609.344, heading))
+        writeToDevice(String(format: "L%.0f,%.0f", 10000 * location.coordinate.latitude, 10000 * location.coordinate.longitude))
+        writeToDevice(String(format: "A%.0f,%.0f,%.0f", location.altitude, location.speed * 3600 / 1609.344, heading))
     }
 }
