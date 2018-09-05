@@ -42,6 +42,7 @@ class BTManager {
     private var beaconRangingFuture: FutureStream<RegionState>?
 
     var isRanging = false
+    var isConnected = false
 
     private let beaconManager = BeaconManager()
     private let beaconUUID = UUID(uuidString: "A495DEAD-C5B1-4B44-B512-1370F02D74DE")!
@@ -82,47 +83,44 @@ class BTManager {
     }
 
     private func addNotification(_ message: String, delay: TimeInterval, identifier: String?) {
-        if UIApplication.shared.applicationState != .active {
-            let content = UNMutableNotificationContent()
-            content.title = ""
-            content.body = message
-            content.sound = UNNotificationSound.default()
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
-            let request = UNNotificationRequest(identifier: identifier ?? UUID().uuidString, content: content, trigger: trigger)
-            let center = UNUserNotificationCenter.current()
-            center.add(request)
-            center.getDeliveredNotifications { (notifications) in
-                let idsToRemove = notifications.sorted(by: { (n1, n2) -> Bool in
-                    n2.date < n1.date
-                }).map { $0.request.identifier }
-                guard idsToRemove.count > 10 else { return }
-                DispatchQueue.main.async {
-                    center.removeDeliveredNotifications(withIdentifiers: [] + idsToRemove[10...])
-                }
+        let content = UNMutableNotificationContent()
+        content.title = ""
+        content.body = message
+        content.sound = UNNotificationSound.default()
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
+        let request = UNNotificationRequest(identifier: identifier ?? UUID().uuidString, content: content, trigger: trigger)
+        let center = UNUserNotificationCenter.current()
+        center.add(request)
+        center.getDeliveredNotifications { (notifications) in
+            let idsToRemove = notifications.sorted(by: { (n1, n2) -> Bool in
+                n2.date < n1.date
+            }).map { $0.request.identifier }
+            guard idsToRemove.count > 10 else { return }
+            DispatchQueue.main.async {
+                center.removeDeliveredNotifications(withIdentifiers: [] + idsToRemove[10...])
             }
         }
     }
 
     private func notify(_ message: String, delay: TimeInterval = 0.1, identifier: String? = nil, cancelsIdentifier: String? = nil) {
-        print("Notify: \(message)")
         statusPromise.success(message)
 
         if let cancelsIdentifier = cancelsIdentifier {
             let center = UNUserNotificationCenter.current()
             center.getPendingNotificationRequests { [weak self] (notifications) in
-                if notifications.filter({ n -> Bool in n.identifier == cancelsIdentifier }).first != nil {
+                if notifications.first(where: { n -> Bool in n.identifier == cancelsIdentifier }) != nil {
                     center.removePendingNotificationRequests(withIdentifiers: [cancelsIdentifier])
                 } else {
                     self?.addNotification(message, delay: delay, identifier: identifier)
                 }
             }
+        } else {
+            addNotification(message, delay: delay, identifier: identifier)
         }
-
-        addNotification(message, delay: delay, identifier: identifier)
     }
 
     private func present(_ message: String) {
-        print("Present: \(message)")
+        statusPromise.success(message)
     }
 
     private func startCentral() {
@@ -177,31 +175,18 @@ class BTManager {
                 guard let accelerometerDataCharacteristic = self.accelerometerDataCharacteristic else {
                     throw CentraError.dataCharactertisticNotFound
                 }
-                self.notify("Connected to van")
+                if !self.isConnected {
+                    self.isConnected = true
+                    self.notify("Connected to van", delay: 1, identifier: "connected", cancelsIdentifier: "disconnected")
+                }
                 return accelerometerDataCharacteristic.receiveNotificationUpdates(capacity: 10)
             }
 
         dataUpdateFuture.onFailure { [unowned self] error in
-            switch error {
-            case CentraError.dataCharactertisticNotFound:
-                break
-            case CentraError.serviceNotFound:
-                self.present("error: \(error)")
-            case CentraError.invalidState:
-                self.present("Invalid state")
-            case CentraError.resetting:
-                self.present("Bluetooth service resetting")
-            case CentraError.poweredOff:
-                self.present("Bluetooth powered off")
-            case CentraError.unknown:
-                break
-            case PeripheralError.disconnected,
-                 CBError.peripheralDisconnected,
-                 PeripheralError.forcedDisconnect:
-                self.notify("Disconnected from van")
-                break
-            default:
-                self.present("error: \(error)")
+            self.present("disconnected: \(error)")
+            if self.isConnected {
+                self.isConnected = false
+                self.notify("Disconnected from van: \(error)", delay: 20, identifier: "disconnected", cancelsIdentifier: "connected")
             }
             self.peripheral?.disconnect()
             self.manager.reset()
@@ -227,7 +212,7 @@ class BTManager {
     private func setInsideRegion() {
         if !inRegion {
             inRegion = true
-            notify("Entered region.", delay: 15, identifier: "enteredRegion", cancelsIdentifier: "leftRegion")
+            notify("Entered region.", delay: 1, identifier: "enteredRegion", cancelsIdentifier: "leftRegion")
         }
         startBackgroundHandler()
     }
@@ -244,7 +229,7 @@ class BTManager {
     private func setOutsideRegion() {
         if inRegion {
             inRegion = false
-            notify("Exited region.", delay: 15, identifier: "leftRegion", cancelsIdentifier: "enteredRegion")
+            notify("Exited region.", delay: 30, identifier: "leftRegion", cancelsIdentifier: "enteredRegion")
         }
     }
 
