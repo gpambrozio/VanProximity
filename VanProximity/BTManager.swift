@@ -29,6 +29,46 @@ public enum CentraError : Error {
     case unlikley
 }
 
+class Debouncer<T> where T: Equatable {
+    private var currentState: T
+    private var lastState: T
+    private var lastStateTime: TimeInterval
+    private let debounceTime: TimeInterval
+
+    private let statePromise = StreamPromise<T>(capacity: 10)
+    public var stateStream: FutureStream<T> {
+        return statePromise.stream
+    }
+
+    required init(_ state: T, debounce: TimeInterval = 15) {
+        currentState = state
+        lastState = state
+        lastStateTime = Date.timeIntervalSinceReferenceDate
+        debounceTime = debounce
+    }
+
+    private func checkLastState() {
+        if currentState != lastState && Date.timeIntervalSinceReferenceDate - lastStateTime >= debounceTime {
+            currentState = lastState
+            statePromise.success(currentState)
+        }
+    }
+
+    var state: T {
+        get {
+            return currentState
+        }
+        set {
+            guard lastState != newValue else { return }
+            lastState = newValue
+            lastStateTime = Date.timeIntervalSinceReferenceDate
+            Timer.scheduledTimer(withTimeInterval: debounceTime, repeats: false) { [weak self] _ in
+                self?.checkLastState()
+            }
+        }
+    }
+}
+
 class BTManager {
 
     static let shared = BTManager()
@@ -39,10 +79,12 @@ class BTManager {
     }
 
     private var beaconRegion: BeaconRegion
-    private var beaconRangingFuture: FutureStream<RegionState>?
+    private var beaconRangingFuture: FutureStream<[Beacon]>?
 
     var isRanging = false
     var isConnected = false
+
+    let proximityState = Debouncer(false)
 
     private let beaconManager = BeaconManager()
     private let beaconUUID = UUID(uuidString: "A495DEAD-C5B1-4B44-B512-1370F02D74DE")!
@@ -54,6 +96,9 @@ class BTManager {
 
     private init() {
         beaconRegion = BeaconRegion(proximityUUID: beaconUUID, identifier: "Example Beacon")
+        proximityState.stateStream.onSuccess { (proximity) in
+            self.notify("Van is \(proximity ? "near" : "far")")
+        }
     }
 
     @discardableResult
@@ -64,18 +109,48 @@ class BTManager {
         guard !beaconManager.isMonitoring else {
             return true
         }
-        beaconRangingFuture = beaconManager.startMonitoring(for: beaconRegion, authorization: .authorizedAlways)
-        beaconRangingFuture?.onSuccess { [unowned self] state in
+        beaconRangingFuture = beaconManager.startMonitoring(for: beaconRegion, authorization: .authorizedAlways).flatMap{ [unowned self] state -> FutureStream<[Beacon]> in
             switch state {
             case .start:
                 self.isRanging = false
+                throw AppError.started
             case .inside:
                 self.setInsideRegion()
                 self.isRanging = true
+                return self.beaconManager.startRangingBeacons(in: self.beaconRegion, authorization: .authorizedAlways)
             case .outside:
                 self.setOutsideRegion()
+                self.beaconManager.stopRangingBeacons(in: self.beaconRegion)
+                self.isRanging = false
+                throw AppError.outside
             case .unknown:
-                break
+                throw AppError.unknownState
+            }
+        }
+        var lastProximity = false
+        beaconRangingFuture?.onSuccess { [unowned self] beacons in
+            guard self.isRanging,
+                let beacon = beacons.first else {
+                return
+            }
+            if case .unknown = beacon.proximity { return }
+            let near = { () -> Bool in
+                switch beacon.proximity {
+                case .unknown, .far:
+                    return false
+                case .immediate, .near:
+                    return true
+                }
+            }()
+            self.proximityState.state = near
+            if lastProximity != near {
+                lastProximity = near
+                self.present("Van might be \(near ? "near" : "far")")
+            }
+        }
+        beaconRangingFuture?.onFailure { error in
+            if error is AppError {
+                return
             }
         }
         startCentral()

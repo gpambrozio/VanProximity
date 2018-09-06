@@ -19,18 +19,28 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="AeM-Tp-n3p">
-                                <rect key="frame" x="10" y="30" width="355" height="627"/>
+                                <rect key="frame" x="10" y="30" width="355" height="582"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                 <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
                             </textView>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="BTH-GS-Nmm">
+                                <rect key="frame" x="20" y="627" width="334" height="30"/>
+                                <state key="normal" title="Clear"/>
+                                <connections>
+                                    <action selector="clearTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="61m-5U-Dt2"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
+                            <constraint firstItem="BTH-GS-Nmm" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="20" id="Blu-9g-tp7"/>
                             <constraint firstItem="AeM-Tp-n3p" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="10" id="DMF-5D-fqk"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="AeM-Tp-n3p" secondAttribute="bottom" constant="10" id="GjD-DC-j2D"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="AeM-Tp-n3p" secondAttribute="trailing" constant="10" id="KFF-2k-2WC"/>
+                            <constraint firstItem="BTH-GS-Nmm" firstAttribute="top" secondItem="AeM-Tp-n3p" secondAttribute="bottom" constant="15" id="DVi-9A-9Ze"/>
+                            <constraint firstItem="BTH-GS-Nmm" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="GdS-0t-W0E"/>
                             <constraint firstItem="AeM-Tp-n3p" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="PTm-aX-c1P"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="BTH-GS-Nmm" secondAttribute="bottom" constant="10" id="SRG-KS-wnR"/>
+                            <constraint firstItem="AeM-Tp-n3p" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="uoG-oT-9AB"/>
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                     </view>

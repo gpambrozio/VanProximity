@@ -27,6 +27,9 @@ class ViewController: UIViewController {
         // Dispose of any resources that can be recreated.
     }
 
+    @IBAction func clearTapped(_ sender: Any) {
+        self.eventsTextView.text = ""
+    }
 
 }
 
