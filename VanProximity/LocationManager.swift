@@ -21,19 +21,21 @@ class LocationManager: NSObject {
         super.init()
         locationManager.delegate = self
 
-        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-        locationManager.distanceFilter = 10
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        locationManager.distanceFilter = 5
         locationManager.activityType = .automotiveNavigation
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.requestAlwaysAuthorization()
     }
 
     func startUpdatingLocation() {
+        locationManager.showsBackgroundLocationIndicator = true
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
     }
 
     func stopUpdatingLocation() {
+        locationManager.showsBackgroundLocationIndicator = false
         locationManager.stopUpdatingLocation()
         locationManager.stopUpdatingHeading()
     }

@@ -246,7 +246,6 @@ class BTManager {
                 LocationManager.shared.startUpdatingLocation()
                 return dataCharacteristic.startNotifying()
             }.flatMap { [unowned self] () -> FutureStream<Data?> in
-                self.writeToDevice("C")
                 guard let accelerometerDataCharacteristic = self.accelerometerDataCharacteristic else {
                     throw CentraError.dataCharactertisticNotFound
                 }
@@ -308,8 +307,22 @@ class BTManager {
         }
     }
 
+    private var lastCoordinate: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 0, longitude: 0)
+    private var lastAltitude: CLLocationDistance = -1000
+    private var lastSpeed: CLLocationSpeed = -1000
+    private var lastHeading: CLLocationDirection = -1
+
     public func updateLocation(_ location: CLLocation, heading: CLLocationDirection) {
-        writeToDevice(String(format: "L%.0f,%.0f", 10000 * location.coordinate.latitude, 10000 * location.coordinate.longitude))
-        writeToDevice(String(format: "A%.0f,%.0f,%.0f", location.altitude, location.speed * 3600 / 1609.344, heading))
+        if abs(lastCoordinate.latitude - location.coordinate.latitude) >= 0.0001 || abs(lastCoordinate.longitude - location.coordinate.longitude) > 0.0001 {
+            lastCoordinate = location.coordinate
+            writeToDevice(String(format: "L%.0f,%.0f", 10000 * location.coordinate.latitude, 10000 * location.coordinate.longitude))
+        }
+
+        if abs(lastAltitude - location.altitude) >= 1 || abs(lastSpeed - location.speed) >= 1 || (abs(lastHeading - heading) >= 1 && lastSpeed > 5) {
+            lastAltitude = location.altitude
+            lastSpeed = location.speed
+            lastHeading = heading
+            writeToDevice(String(format: "A%.0f,%.0f,%.0f", location.altitude, location.speed * 3600 / 1609.344, heading))
+        }
     }
 }
