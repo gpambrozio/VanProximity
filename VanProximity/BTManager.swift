@@ -312,13 +312,13 @@ class BTManager {
     private var lastSpeed: CLLocationSpeed = -1000
     private var lastHeading: CLLocationDirection = -1
 
-    public func updateLocation(_ location: CLLocation, heading: CLLocationDirection) {
-        if abs(lastCoordinate.latitude - location.coordinate.latitude) >= 0.0001 || abs(lastCoordinate.longitude - location.coordinate.longitude) > 0.0001 {
+    public func updateLocation(_ location: CLLocation, heading: CLLocationDirection, force: Bool) {
+        if force || abs(lastCoordinate.latitude - location.coordinate.latitude) >= 0.0001 || abs(lastCoordinate.longitude - location.coordinate.longitude) > 0.0001 {
             lastCoordinate = location.coordinate
             writeToDevice(String(format: "L%.0f,%.0f", 10000 * location.coordinate.latitude, 10000 * location.coordinate.longitude))
         }
 
-        if abs(lastAltitude - location.altitude) >= 1 || abs(lastSpeed - location.speed) >= 1 || (abs(lastHeading - heading) >= 1 && lastSpeed > 5) {
+        if force || abs(lastAltitude - location.altitude) >= 1 || abs(lastSpeed - location.speed) >= 1 || (abs(lastHeading - heading) >= 1 && lastSpeed > 5) {
             lastAltitude = location.altitude
             lastSpeed = location.speed
             lastHeading = heading

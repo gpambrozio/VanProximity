@@ -32,6 +32,7 @@ class LocationManager: NSObject {
         locationManager.showsBackgroundLocationIndicator = true
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
+        updateBTManager(force: true)
     }
 
     func stopUpdatingLocation() {
@@ -40,11 +41,11 @@ class LocationManager: NSObject {
         locationManager.stopUpdatingHeading()
     }
 
-    func updateBTManager() {
+    func updateBTManager(force: Bool = false) {
         guard let lastLocation = lastLocation, let lastHeading = lastHeading else {
             return
         }
-        BTManager.shared.updateLocation(lastLocation, heading: lastHeading)
+        BTManager.shared.updateLocation(lastLocation, heading: lastHeading, force: force)
     }
 }
 
