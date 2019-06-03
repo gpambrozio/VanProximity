@@ -8,37 +8,60 @@
 
 import Foundation
 import CoreLocation
+import BlueCapKit
 
 class LocationManager: NSObject {
 
     static let shared = LocationManager()
     private let locationManager = CLLocationManager()
 
+    private let locationPromise = StreamPromise<CLLocation?>(capacity: 10)
+    public var locationStream: FutureStream<CLLocation?> {
+        return locationPromise.stream
+    }
+    private let updatingPromise = StreamPromise<Bool>(capacity: 10)
+    public var updatingStream: FutureStream<Bool> {
+        return updatingPromise.stream
+    }
+
     private var lastHeading: CLLocationDirection?
-    private var lastLocation: CLLocation?
+    private var lastLocation: CLLocation? {
+        didSet {
+            locationPromise.success(lastLocation)
+        }
+    }
 
     private override init() {
         super.init()
         locationManager.delegate = self
 
-        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        locationManager.distanceFilter = 5
-        locationManager.activityType = .automotiveNavigation
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        locationManager.distanceFilter = 50
+        locationManager.activityType = .other
         locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.requestAlwaysAuthorization()
+        locationManager.startUpdatingLocation()
     }
 
     func startUpdatingLocation() {
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        locationManager.distanceFilter = 5
+        locationManager.activityType = .automotiveNavigation
         locationManager.showsBackgroundLocationIndicator = true
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
         updateBTManager(force: true)
+        updatingPromise.success(true)
     }
 
     func stopUpdatingLocation() {
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        locationManager.distanceFilter = 50
+        locationManager.activityType = .other
         locationManager.showsBackgroundLocationIndicator = false
-        locationManager.stopUpdatingLocation()
         locationManager.stopUpdatingHeading()
+        updatingPromise.success(false)
     }
 
     func updateBTManager(force: Bool = false) {

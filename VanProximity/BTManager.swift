@@ -77,12 +77,33 @@ class BTManager {
     public var statusStream: FutureStream<String> {
         return statusPromise.stream
     }
+    typealias State = (isRanging: Bool, isConnected: Bool)
+    private let statePromise = StreamPromise<State>(capacity: 10)
+    public var stateStream: FutureStream<State> {
+        return statePromise.stream
+    }
 
     private var beaconRegion: BeaconRegion
     private var beaconRangingFuture: FutureStream<[Beacon]>?
 
-    var isRanging = false
-    var isConnected = false
+    private func updateState() {
+        statePromise.success((isRanging: isRanging, isConnected: isConnected))
+    }
+
+    var isRanging = false {
+        didSet {
+            updateState()
+        }
+    }
+    var isConnected = false {
+        didSet {
+            updateState()
+        }
+    }
+
+    var state: String {
+        return "\(manager.state.description)"
+    }
 
     let proximityState = Debouncer(false)
 
@@ -101,15 +122,20 @@ class BTManager {
         }
     }
 
-    @discardableResult
-    func startMonitoring() -> Bool {
-        guard beaconManager.isRangingAvailable() else {
-            return false
+    func start() {
+        startMonitoring()
+        startCentral()
+    }
+
+    func restart() {
+        manager.reset()
+    }
+
+    private func startMonitoring() {
+        guard beaconManager.isRangingAvailable(), !beaconManager.isMonitoring else {
+            return
         }
-        guard !beaconManager.isMonitoring else {
-            return true
-        }
-        beaconRangingFuture = beaconManager.startMonitoring(for: beaconRegion, authorization: .authorizedAlways).flatMap{ [unowned self] state -> FutureStream<[Beacon]> in
+        beaconRangingFuture = beaconManager.startMonitoring(for: beaconRegion, authorization: .authorizedAlways).flatMap { [unowned self] state -> FutureStream<[Beacon]> in
             switch state {
             case .start:
                 self.isRanging = false
@@ -153,8 +179,6 @@ class BTManager {
                 return
             }
         }
-        startCentral()
-        return true
     }
 
     private func addNotification(_ message: String, delay: TimeInterval, identifier: String?) {
@@ -217,44 +241,44 @@ class BTManager {
             case .unknown:
                 throw CentraError.unknown
             }
-            }.flatMap { [unowned self] peripheral -> FutureStream<Void> in
-                self.manager.stopScanning()
-                self.peripheral = peripheral
-                return peripheral.connect(connectionTimeout: 10.0)
-            }.flatMap { [unowned self] () -> Future<Void> in
-                guard let peripheral = self.peripheral else {
-                    throw CentraError.unlikley
-                }
-                return peripheral.discoverServices([serviceUUID])
-            }.flatMap { [unowned self] () -> Future<Void> in
-                guard let peripheral = self.peripheral else {
-                    throw CentraError.unlikley
-                }
-                guard let service = peripheral.services(withUUID: serviceUUID)?.first else {
-                    print("\(peripheral.services)")
-                    throw CentraError.serviceNotFound
-                }
-                return service.discoverCharacteristics([dataUUID])
-            }.flatMap { [unowned self] () -> Future<Void> in
-                guard let peripheral = self.peripheral, let service = peripheral.services(withUUID: serviceUUID)?.first else {
-                    throw CentraError.serviceNotFound
-                }
-                guard let dataCharacteristic = service.characteristics(withUUID: dataUUID)?.first else {
-                    throw CentraError.dataCharactertisticNotFound
-                }
-                self.accelerometerDataCharacteristic = dataCharacteristic
-                LocationManager.shared.startUpdatingLocation()
-                return dataCharacteristic.startNotifying()
-            }.flatMap { [unowned self] () -> FutureStream<Data?> in
-                guard let accelerometerDataCharacteristic = self.accelerometerDataCharacteristic else {
-                    throw CentraError.dataCharactertisticNotFound
-                }
-                if !self.isConnected {
-                    self.isConnected = true
-                    self.notify("Connected to van", delay: 1, identifier: "connected", cancelsIdentifier: "disconnected")
-                }
-                return accelerometerDataCharacteristic.receiveNotificationUpdates(capacity: 10)
+        }.flatMap { [unowned self] peripheral -> FutureStream<Void> in
+            self.manager.stopScanning()
+            self.peripheral = peripheral
+            return peripheral.connect(connectionTimeout: 10.0)
+        }.flatMap { [unowned self] () -> Future<Void> in
+            guard let peripheral = self.peripheral else {
+                throw CentraError.unlikley
             }
+            return peripheral.discoverServices([serviceUUID])
+        }.flatMap { [unowned self] () -> Future<Void> in
+            guard let peripheral = self.peripheral else {
+                throw CentraError.unlikley
+            }
+            guard let service = peripheral.services(withUUID: serviceUUID)?.first else {
+                print("\(peripheral.services)")
+                throw CentraError.serviceNotFound
+            }
+            return service.discoverCharacteristics([dataUUID])
+        }.flatMap { [unowned self] () -> Future<Void> in
+            guard let peripheral = self.peripheral, let service = peripheral.services(withUUID: serviceUUID)?.first else {
+                throw CentraError.serviceNotFound
+            }
+            guard let dataCharacteristic = service.characteristics(withUUID: dataUUID)?.first else {
+                throw CentraError.dataCharactertisticNotFound
+            }
+            self.accelerometerDataCharacteristic = dataCharacteristic
+            LocationManager.shared.startUpdatingLocation()
+            return dataCharacteristic.startNotifying()
+        }.flatMap { [unowned self] () -> FutureStream<Data?> in
+            guard let accelerometerDataCharacteristic = self.accelerometerDataCharacteristic else {
+                throw CentraError.dataCharactertisticNotFound
+            }
+            if !self.isConnected {
+                self.isConnected = true
+                self.notify("Connected to van", delay: 1, identifier: "connected", cancelsIdentifier: "disconnected")
+            }
+            return accelerometerDataCharacteristic.receiveNotificationUpdates(capacity: 10)
+        }
 
         dataUpdateFuture.onFailure { [unowned self] error in
             self.present("disconnected: \(error)")
@@ -278,7 +302,7 @@ class BTManager {
             manager.reset()
             return false
         }
-        _ = accelerometerDataCharacteristic.write(data: command.data(using: .utf8)!)
+        _ = accelerometerDataCharacteristic.write(data: command.data(using: .utf8)!).result
         return true
     }
 
@@ -318,7 +342,7 @@ class BTManager {
             writeToDevice(String(format: "L%.0f,%.0f", 10000 * location.coordinate.latitude, 10000 * location.coordinate.longitude))
         }
 
-        if force || abs(lastAltitude - location.altitude) >= 1 || abs(lastSpeed - location.speed) >= 1 || (abs(lastHeading - heading) >= 1 && lastSpeed > 5) {
+        if force || abs(lastAltitude - location.altitude) >= 1 || abs(lastSpeed - location.speed) >= 1 || (abs(lastHeading - heading) >= 1 && location.speed > 4) {
             lastAltitude = location.altitude
             lastSpeed = location.speed
             lastHeading = heading

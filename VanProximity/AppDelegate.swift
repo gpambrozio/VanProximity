@@ -21,7 +21,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let options: UNAuthorizationOptions = [.alert, .sound, .badge]
         center.requestAuthorization(options: options) { (granted, error) in
         }
-        BTManager.shared.startMonitoring()
+        BTManager.shared.start()
         return true
     }
 
