@@ -275,8 +275,10 @@ class BTManager {
             }
             if !self.isConnected {
                 self.isConnected = true
+                self.updateTime()
                 self.notify("Connected to van", delay: 1, identifier: "connected", cancelsIdentifier: "disconnected")
             }
+
             return accelerometerDataCharacteristic.receiveNotificationUpdates(capacity: 10)
         }
 
@@ -348,5 +350,12 @@ class BTManager {
             lastHeading = heading
             writeToDevice(String(format: "A%.0f,%.0f,%.0f", location.altitude, location.speed * 3600 / 1609.344, heading))
         }
+    }
+
+    private func updateTime() {
+        let dateFormat = DateFormatter()
+        dateFormat.dateFormat = "MMddHHmmyy.ss"
+        dateFormat.timeZone = TimeZone.current
+        writeToDevice(String(format: "T%@;%@", dateFormat.string(from: Date()), dateFormat.timeZone.identifier))
     }
 }
