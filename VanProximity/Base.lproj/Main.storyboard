@@ -18,21 +18,8 @@
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="AeM-Tp-n3p">
-                                <rect key="frame" x="10" y="207" width="355" height="410"/>
-                                <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
-                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
-                            </textView>
-                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="BTH-GS-Nmm">
-                                <rect key="frame" x="20" y="627" width="335" height="30"/>
-                                <state key="normal" title="Clear"/>
-                                <connections>
-                                    <action selector="clearTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="61m-5U-Dt2"/>
-                                </connections>
-                            </button>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="5" translatesAutoresizingMaskIntoConstraints="NO" id="JDV-5Z-7z0">
-                                <rect key="frame" x="10" y="30" width="355" height="167"/>
+                                <rect key="frame" x="10" y="30" width="355" height="192.5"/>
                                 <subviews>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="HHp-Ya-Fji">
                                         <rect key="frame" x="0.0" y="0.0" width="355" height="20.5"/>
@@ -58,15 +45,21 @@
                                         <nil key="textColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="jSe-c7-xcz">
+                                        <rect key="frame" x="0.0" y="102" width="355" height="20.5"/>
+                                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                        <nil key="textColor"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="EfZ-0t-sLP">
-                                        <rect key="frame" x="0.0" y="102" width="355" height="30"/>
+                                        <rect key="frame" x="0.0" y="127.5" width="355" height="30"/>
                                         <state key="normal" title="State"/>
                                         <connections>
                                             <action selector="stateTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="qLC-K9-VN3"/>
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="VwM-vv-Iw7">
-                                        <rect key="frame" x="0.0" y="137" width="355" height="30"/>
+                                        <rect key="frame" x="0.0" y="162.5" width="355" height="30"/>
                                         <state key="normal" title="Restart"/>
                                         <connections>
                                             <action selector="restartTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="7lX-9w-WVk"/>
@@ -74,6 +67,19 @@
                                     </button>
                                 </subviews>
                             </stackView>
+                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" editable="NO" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="AeM-Tp-n3p">
+                                <rect key="frame" x="10" y="232.5" width="355" height="384.5"/>
+                                <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
+                            </textView>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="BTH-GS-Nmm">
+                                <rect key="frame" x="20" y="627" width="335" height="30"/>
+                                <state key="normal" title="Clear"/>
+                                <connections>
+                                    <action selector="clearTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="61m-5U-Dt2"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
@@ -94,6 +100,7 @@
                         <outlet property="connectedLabel" destination="HHp-Ya-Fji" id="4H4-ll-BLi"/>
                         <outlet property="eventsTextView" destination="AeM-Tp-n3p" id="Mzb-4A-zle"/>
                         <outlet property="locationUpdateLabel" destination="sgN-XZ-CYE" id="Mr0-W3-kMa"/>
+                        <outlet property="locationUpdateStateLabel" destination="jSe-c7-xcz" id="V6l-Cl-MIf"/>
                         <outlet property="rangingLabel" destination="IvD-xa-0ha" id="aPn-gT-A0H"/>
                         <outlet property="stateButton" destination="EfZ-0t-sLP" id="pGK-hc-C1q"/>
                         <outlet property="updatingLocationLabel" destination="us7-ud-Atg" id="1zY-SN-0lK"/>

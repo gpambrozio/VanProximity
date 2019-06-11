@@ -35,7 +35,7 @@ class Debouncer<T> where T: Equatable {
     private var lastStateTime: TimeInterval
     private let debounceTime: TimeInterval
 
-    private let statePromise = StreamPromise<T>(capacity: 10)
+    private let statePromise = StreamPromise<T>(capacity: 1)
     public var stateStream: FutureStream<T> {
         return statePromise.stream
     }
@@ -73,12 +73,12 @@ class BTManager {
 
     static let shared = BTManager()
 
-    private let statusPromise = StreamPromise<String>(capacity: 10)
+    private let statusPromise = StreamPromise<String>(capacity: 1)
     public var statusStream: FutureStream<String> {
         return statusPromise.stream
     }
     typealias State = (isRanging: Bool, isConnected: Bool)
-    private let statePromise = StreamPromise<State>(capacity: 10)
+    private let statePromise = StreamPromise<State>(capacity: 1)
     public var stateStream: FutureStream<State> {
         return statePromise.stream
     }
@@ -120,6 +120,7 @@ class BTManager {
         proximityState.stateStream.onSuccess { (proximity) in
             self.notify("Van is \(proximity ? "near" : "far")")
         }
+        updateState()
     }
 
     func start() {
@@ -231,7 +232,7 @@ class BTManager {
             switch state {
             case .poweredOn:
                 self.manager.disconnectAllPeripherals()
-                return self.manager.startScanning(forServiceUUIDs: [serviceUUID], capacity: 10)
+                return self.manager.startScanning(forServiceUUIDs: [serviceUUID], capacity: 1)
             case .poweredOff:
                 throw CentraError.poweredOff
             case .unauthorized, .unsupported:
@@ -267,7 +268,6 @@ class BTManager {
                 throw CentraError.dataCharactertisticNotFound
             }
             self.accelerometerDataCharacteristic = dataCharacteristic
-            LocationManager.shared.startUpdatingLocation()
             return dataCharacteristic.startNotifying()
         }.flatMap { [unowned self] () -> FutureStream<Data?> in
             guard let accelerometerDataCharacteristic = self.accelerometerDataCharacteristic else {
@@ -279,7 +279,7 @@ class BTManager {
                 self.notify("Connected to van", delay: 1, identifier: "connected", cancelsIdentifier: "disconnected")
             }
 
-            return accelerometerDataCharacteristic.receiveNotificationUpdates(capacity: 10)
+            return accelerometerDataCharacteristic.receiveNotificationUpdates(capacity: 1)
         }
 
         dataUpdateFuture.onFailure { [unowned self] error in
@@ -289,8 +289,7 @@ class BTManager {
                 self.notify("Disconnected from van: \(error)", delay: 20, identifier: "disconnected", cancelsIdentifier: "connected")
             }
             self.peripheral?.disconnect()
-            self.manager.reset()
-            LocationManager.shared.stopUpdatingLocation()
+            self.restart()
         }
 
         dataUpdateFuture.onSuccess { data in
@@ -301,7 +300,7 @@ class BTManager {
     @discardableResult
     private func writeToDevice(_ command: String) -> Bool {
         guard let accelerometerDataCharacteristic = self.accelerometerDataCharacteristic else {
-            manager.reset()
+            restart()
             return false
         }
         _ = accelerometerDataCharacteristic.write(data: command.data(using: .utf8)!).result

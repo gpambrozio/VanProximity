@@ -15,24 +15,25 @@ class ViewController: UIViewController {
     @IBOutlet var updatingLocationLabel: UILabel!
     @IBOutlet var locationUpdateLabel: UILabel!
     @IBOutlet var stateButton: UIButton!
+    @IBOutlet var locationUpdateStateLabel: UILabel!
 
     @IBOutlet weak var eventsTextView: UITextView!
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        BTManager.shared.statusStream.onSuccess { [unowned self] (message) in
+        BTManager.shared.statusStream.onSuccess { [unowned self] message in
             let now = DateFormatter.init()
             now.dateStyle = .none
             now.timeStyle = .long
             self.eventsTextView.text = "\(now.string(from: Date())) \(message)\n\(self.eventsTextView.text ?? "")"
         }
 
-        BTManager.shared.stateStream.onSuccess { [unowned self] (state) in
+        BTManager.shared.stateStream.onSuccess { [unowned self] state in
             self.connectedLabel.text = state.isConnected ? "Connected !!" : "Disconnected"
             self.rangingLabel.text = state.isRanging ? "Ranging" : "Not Ranging"
         }
 
-        LocationManager.shared.locationStream.onSuccess { (location) in
+        LocationManager.shared.locationStream.onSuccess { [unowned self] location in
             guard let location = location else {
                 self.locationUpdateLabel.text = "?"
                 return
@@ -41,7 +42,11 @@ class ViewController: UIViewController {
             let now = DateFormatter.init()
             now.dateStyle = .none
             now.timeStyle = .long
-            self.locationUpdateLabel.text = String(format: "%.1f mps, \(now.string(from: location.timestamp))", location.speed)
+            self.locationUpdateLabel.text = String(format: "%.1f mph, \(now.string(from: location.timestamp))", location.speed * 3600 / 1609.344)
+        }
+
+        LocationManager.shared.updateLocationState.onSuccess { [unowned self] isCharging, batteryLevel, isConnected in
+            self.locationUpdateStateLabel.text = "charg: \(isCharging), battery: \(batteryLevel), conn: \(isConnected)"
         }
 
         LocationManager.shared.updatingStream.onSuccess { [unowned self] (updating) in
