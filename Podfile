@@ -6,7 +6,8 @@ target 'VanProximity' do
   use_frameworks!
 
   # Pods for VanProximity
-  pod 'BlueCapKit'
+  pod 'RxBluetoothKit'
+  pod 'RxCoreLocation'
 
   target 'VanProximityTests' do
     inherit! :search_paths
