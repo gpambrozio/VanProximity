@@ -8,7 +8,8 @@
 
 import Foundation
 import CoreLocation
-import BlueCapKit
+import RxCoreLocation
+import RxSwift
 
 private extension UIDevice.BatteryState {
     var isCharging: Bool {
@@ -27,52 +28,45 @@ class LocationManager: NSObject {
     private let locationManager = CLLocationManager()
     private let device = UIDevice.current
 
-    private let locationPromise = StreamPromise<CLLocation?>(capacity: 1)
-    public var locationStream: FutureStream<CLLocation?> {
-        return locationPromise.stream
-    }
-    private let updatingPromise = StreamPromise<Bool>(capacity: 1)
-    public var updatingStream: FutureStream<Bool> {
-        return updatingPromise.stream
-    }
-    private let batteryStatePromise = StreamPromise<UIDevice.BatteryState>(capacity: 1)
-    private let batteryLevelPromise = StreamPromise<Float>(capacity: 1)
+    public let locationStream = PublishSubject<CLLocation?>()
+    public let updatingStream = PublishSubject<Bool>()
+
+    public let updateLocationState: Observable<(Bool, Float, Bool)>
 
     private var lastHeading: CLLocationDirection?
     private var lastLocation: CLLocation? {
         didSet {
-            locationPromise.success(lastLocation)
+            locationStream.onNext(lastLocation)
         }
     }
 
-    public let updateLocationState: FutureStream<(Bool, Float, Bool)>
+    private let disposeBag = DisposeBag()
 
     private override init() {
         device.isBatteryMonitoringEnabled = true
+
+        let batteryStatePromise = PublishSubject<UIDevice.BatteryState>()
+        let batteryLevelPromise = PublishSubject<Float>()
 
         NotificationCenter.default.addObserver(
             forName: .UIDeviceBatteryStateDidChange,
             object: nil,
             queue: OperationQueue.main) { [batteryStatePromise, device] _ in
-                batteryStatePromise.success(device.batteryState)
+                batteryStatePromise.onNext(device.batteryState)
             }
 
         NotificationCenter.default.addObserver(
             forName: .UIDeviceBatteryLevelDidChange,
             object: nil,
             queue: OperationQueue.main) { [batteryLevelPromise, device] _ in
-                batteryLevelPromise.success(device.batteryLevel)
+                batteryLevelPromise.onNext(device.batteryLevel)
             }
 
-        let combinedBattery = batteryStatePromise.stream.flatMap { [batteryLevelPromise] batteryState in
-            batteryLevelPromise.stream.map { (batteryState, $0) }
+        let combined = PublishSubject.combineLatest(batteryStatePromise, batteryLevelPromise, BTManager.shared.stateStream)
+        updateLocationState = combined.map { (batteryState, batteryLevel, btManagerState) -> (Bool, Float, Bool) in
+            (batteryState.isCharging, batteryLevel, btManagerState.isConnected)
         }
 
-        updateLocationState = combinedBattery.flatMap { batteryState, batteryLevel in
-            BTManager.shared.stateStream.map { btManagerState -> (Bool, Float, Bool) in
-                (batteryState.isCharging, batteryLevel, btManagerState.isConnected)
-            }
-        }
         super.init()
 
         locationManager.delegate = self
@@ -86,21 +80,24 @@ class LocationManager: NSObject {
         locationManager.startUpdatingLocation()
 
         let shouldUpdateLocation = updateLocationState.map { isCharging, batteryLevel, isConnected in
-            return isConnected && (isCharging || batteryLevel >= 0.85)
+            return isConnected && (isCharging || batteryLevel >= 8)
         }
 
-        shouldUpdateLocation.onSuccess { [weak self] (shouldUpdateLocation) in
-            print("shouldUpdateLocation: \(shouldUpdateLocation)")
-            if shouldUpdateLocation {
-                self?.startUpdatingLocation()
-            } else {
-                self?.stopUpdatingLocation()
-            }
-        }
+        shouldUpdateLocation
+            .distinctUntilChanged()
+            .subscribe(onNext: { [weak self] shouldUpdateLocation in
+                print("shouldUpdateLocation: \(shouldUpdateLocation)")
+                if shouldUpdateLocation {
+                    self?.startUpdatingLocation()
+                } else {
+                    self?.stopUpdatingLocation()
+                }
+            })
+            .disposed(by: disposeBag)
 
         // Send current as notification only fires when changed
-        batteryStatePromise.success(device.batteryState)
-        batteryLevelPromise.success(device.batteryLevel)
+        batteryStatePromise.onNext(device.batteryState)
+        batteryLevelPromise.onNext(device.batteryLevel)
     }
 
     private var isUpdatingLocation = false
@@ -114,7 +111,7 @@ class LocationManager: NSObject {
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
         updateBTManager(force: true)
-        updatingPromise.success(true)
+        updatingStream.onNext(true)
     }
 
     private func stopUpdatingLocation() {
@@ -125,7 +122,7 @@ class LocationManager: NSObject {
         locationManager.activityType = .other
         locationManager.showsBackgroundLocationIndicator = false
         locationManager.stopUpdatingHeading()
-        updatingPromise.success(false)
+        updatingStream.onNext(false)
     }
 
     private func updateBTManager(force: Bool = false) {

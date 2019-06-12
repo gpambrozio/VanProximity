@@ -7,87 +7,26 @@
 //
 
 import Foundation
+import UserNotifications
 import CoreLocation
 import CoreBluetooth
-import BlueCapKit
-import UserNotifications
 
-enum AppError : Swift.Error {
-    case rangingBeacon
-    case started
-    case outside
-    case inside
-    case unknownState
-}
-public enum CentraError : Error {
-    case dataCharactertisticNotFound
-    case serviceNotFound
-    case invalidState
-    case resetting
-    case poweredOff
-    case unknown
-    case unlikley
-}
-
-class Debouncer<T> where T: Equatable {
-    private var currentState: T
-    private var lastState: T
-    private var lastStateTime: TimeInterval
-    private let debounceTime: TimeInterval
-
-    private let statePromise = StreamPromise<T>(capacity: 1)
-    public var stateStream: FutureStream<T> {
-        return statePromise.stream
-    }
-
-    required init(_ state: T, debounce: TimeInterval = 15) {
-        currentState = state
-        lastState = state
-        lastStateTime = Date.timeIntervalSinceReferenceDate
-        debounceTime = debounce
-    }
-
-    private func checkLastState() {
-        if currentState != lastState && Date.timeIntervalSinceReferenceDate - lastStateTime >= debounceTime {
-            currentState = lastState
-            statePromise.success(currentState)
-        }
-    }
-
-    var state: T {
-        get {
-            return currentState
-        }
-        set {
-            guard lastState != newValue else { return }
-            lastState = newValue
-            lastStateTime = Date.timeIntervalSinceReferenceDate
-            Timer.scheduledTimer(withTimeInterval: debounceTime, repeats: false) { [weak self] _ in
-                self?.checkLastState()
-            }
-        }
-    }
-}
+import RxBluetoothKit
+import RxCoreLocation
+import RxSwift
 
 class BTManager {
 
     static let shared = BTManager()
 
-    private let statusPromise = StreamPromise<String>(capacity: 1)
-    public var statusStream: FutureStream<String> {
-        return statusPromise.stream
-    }
-    typealias State = (isRanging: Bool, isConnected: Bool)
-    private let statePromise = StreamPromise<State>(capacity: 1)
-    public var stateStream: FutureStream<State> {
-        return statePromise.stream
-    }
+    public let statusStream = PublishSubject<String>()
 
-    private var beaconRegion: BeaconRegion
-    private var beaconRangingFuture: FutureStream<[Beacon]>?
+    typealias State = (isRanging: Bool, isConnected: Bool)
+    public let stateStream = PublishSubject<State>()
+    private let proximityState = PublishSubject<Bool>()
 
     private func updateState() {
-        statePromise.success((isRanging: isRanging, isConnected: isConnected))
+        stateStream.onNext((isRanging: isRanging, isConnected: isConnected))
     }
 
     var isRanging = false {
@@ -102,24 +41,30 @@ class BTManager {
     }
 
     var state: String {
-        return "\(manager.state.description)"
+        return "\(manager.state)"
     }
 
-    let proximityState = Debouncer(false)
-
-    private let beaconManager = BeaconManager()
+    private let locationManager = CLLocationManager()
+    private let beaconRegion: CLBeaconRegion
     private let beaconUUID = UUID(uuidString: "A495DEAD-C5B1-4B44-B512-1370F02D74DE")!
+
+    private let manager = CentralManager(options: [CBCentralManagerOptionRestoreIdentifierKey : "us.gnos.BlueCap.central-manager-example" as NSString])
 
     private var peripheral: Peripheral?
     private var accelerometerDataCharacteristic: Characteristic?
 
-    private let manager = CentralManager(options: [CBCentralManagerOptionRestoreIdentifierKey : "us.gnos.BlueCap.central-manager-example" as NSString])
+    private let disposeBag = DisposeBag()
 
     private init() {
-        beaconRegion = BeaconRegion(proximityUUID: beaconUUID, identifier: "Example Beacon")
-        proximityState.stateStream.onSuccess { (proximity) in
-            self.notify("Van is \(proximity ? "near" : "far")")
-        }
+        beaconRegion = CLBeaconRegion(proximityUUID: beaconUUID, identifier: "Example Beacon")
+        proximityState
+            .debounce(.seconds(10), scheduler: MainScheduler())
+            .distinctUntilChanged()
+            .subscribe(onNext: { [weak self] proximity in
+                self?.notify("Van is \(proximity ? "near" : "far")")
+            })
+            .disposed(by: disposeBag)
+
         updateState()
     }
 
@@ -129,57 +74,46 @@ class BTManager {
     }
 
     func restart() {
-        manager.reset()
+        startCentral()
     }
 
     private func startMonitoring() {
-        guard beaconManager.isRangingAvailable(), !beaconManager.isMonitoring else {
-            return
+        let beaconRangingFuture = locationManager.rx.isRangingAvailable.flatMapLatest { [locationManager, beaconRegion] available -> Observable<CLRegionEvent> in
+            locationManager.startMonitoring(for: beaconRegion)
+            return locationManager.rx.didReceiveRegion.asObservable()
+        }.flatMapLatest { [unowned self]  (manager: CLLocationManager, region: CLRegion, state: CLRegionEventState) -> Observable<CLBeaconsEvent> in
+            manager.startRangingBeacons(in: self.beaconRegion)
+            self.isRanging = true
+            return manager.rx.didRangeBeacons.asObservable()
         }
-        beaconRangingFuture = beaconManager.startMonitoring(for: beaconRegion, authorization: .authorizedAlways).flatMap { [unowned self] state -> FutureStream<[Beacon]> in
-            switch state {
-            case .start:
-                self.isRanging = false
-                throw AppError.started
-            case .inside:
-                self.setInsideRegion()
-                self.isRanging = true
-                return self.beaconManager.startRangingBeacons(in: self.beaconRegion, authorization: .authorizedAlways)
-            case .outside:
-                self.setOutsideRegion()
-                self.beaconManager.stopRangingBeacons(in: self.beaconRegion)
-                self.isRanging = false
-                throw AppError.outside
-            case .unknown:
-                throw AppError.unknownState
-            }
-        }
+
         var lastProximity = false
-        beaconRangingFuture?.onSuccess { [unowned self] beacons in
-            guard self.isRanging,
-                let beacon = beacons.first else {
-                return
-            }
-            if case .unknown = beacon.proximity { return }
-            let near = { () -> Bool in
-                switch beacon.proximity {
-                case .unknown, .far:
-                    return false
-                case .immediate, .near:
-                    return true
+        beaconRangingFuture.subscribe(
+            onNext: { [unowned self] (manager: CLLocationManager, beacons: [CLBeacon], region: CLBeaconRegion) in
+                guard self.isRanging,
+                    let beacon = beacons.first else {
+                        return
                 }
-            }()
-            self.proximityState.state = near
-            if lastProximity != near {
-                lastProximity = near
-                self.present("Van might be \(near ? "near" : "far")")
+                if case .unknown = beacon.proximity { return }
+                let near = { () -> Bool in
+                    switch beacon.proximity {
+                    case .unknown, .far:
+                        return false
+                    case .immediate, .near:
+                        return true
+                    }
+                }()
+                self.proximityState.onNext(near)
+                if lastProximity != near {
+                    lastProximity = near
+                    self.present("Van might be \(near ? "near" : "far")")
+                }
+            },
+            onError: { (error) in
+
             }
-        }
-        beaconRangingFuture?.onFailure { error in
-            if error is AppError {
-                return
-            }
-        }
+        )
+        .disposed(by: disposeBag)
     }
 
     private func addNotification(_ message: String, delay: TimeInterval, identifier: String?) {
@@ -203,7 +137,7 @@ class BTManager {
     }
 
     private func notify(_ message: String, delay: TimeInterval = 0.1, identifier: String? = nil, cancelsIdentifier: String? = nil) {
-        statusPromise.success(message)
+        statusStream.onNext(message)
 
         if let cancelsIdentifier = cancelsIdentifier {
             let center = UNUserNotificationCenter.current()
@@ -220,90 +154,77 @@ class BTManager {
     }
 
     private func present(_ message: String) {
-        statusPromise.success(message)
+        statusStream.onNext(message)
     }
 
+    private var centralDisposeBag = DisposeBag()
     private func startCentral() {
         let serviceUUID = CBUUID(string: "ec00")
         let dataUUID = CBUUID(string: "ec0e")
 
-        // on power, start scanning. when peripheral is discovered connect and stop scanning
-        let dataUpdateFuture = manager.whenStateChanges().flatMap { [unowned self] state -> FutureStream<Peripheral> in
-            switch state {
-            case .poweredOn:
-                self.manager.disconnectAllPeripherals()
-                return self.manager.startScanning(forServiceUUIDs: [serviceUUID], capacity: 1)
-            case .poweredOff:
-                throw CentraError.poweredOff
-            case .unauthorized, .unsupported:
-                throw CentraError.invalidState
-            case .resetting:
-                throw CentraError.resetting
-            case .unknown:
-                throw CentraError.unknown
+        centralDisposeBag = DisposeBag()
+        manager.observeState()
+            .startWith(manager.state)
+            .filter { $0 == .poweredOn }
+            .flatMapLatest { [manager] _ in
+                manager.scanForPeripherals(withServices: [serviceUUID])
             }
-        }.flatMap { [unowned self] peripheral -> FutureStream<Void> in
-            self.manager.stopScanning()
-            self.peripheral = peripheral
-            return peripheral.connect(connectionTimeout: 10.0)
-        }.flatMap { [unowned self] () -> Future<Void> in
-            guard let peripheral = self.peripheral else {
-                throw CentraError.unlikley
+            .flatMapLatest { [weak self] scanned -> Observable<Peripheral> in
+                self?.peripheral = scanned.peripheral
+                return scanned.peripheral.establishConnection()
             }
-            return peripheral.discoverServices([serviceUUID])
-        }.flatMap { [unowned self] () -> Future<Void> in
-            guard let peripheral = self.peripheral else {
-                throw CentraError.unlikley
+            .flatMapLatest {
+                $0.discoverServices([serviceUUID])
             }
-            guard let service = peripheral.services(withUUID: serviceUUID)?.first else {
-                print("\(peripheral.services)")
-                throw CentraError.serviceNotFound
+            .flatMapLatest {
+                $0[0].discoverCharacteristics([dataUUID])
             }
-            return service.discoverCharacteristics([dataUUID])
-        }.flatMap { [unowned self] () -> Future<Void> in
-            guard let peripheral = self.peripheral, let service = peripheral.services(withUUID: serviceUUID)?.first else {
-                throw CentraError.serviceNotFound
-            }
-            guard let dataCharacteristic = service.characteristics(withUUID: dataUUID)?.first else {
-                throw CentraError.dataCharactertisticNotFound
-            }
-            self.accelerometerDataCharacteristic = dataCharacteristic
-            return dataCharacteristic.startNotifying()
-        }.flatMap { [unowned self] () -> FutureStream<Data?> in
-            guard let accelerometerDataCharacteristic = self.accelerometerDataCharacteristic else {
-                throw CentraError.dataCharactertisticNotFound
-            }
-            if !self.isConnected {
-                self.isConnected = true
-                self.updateTime()
-                self.notify("Connected to van", delay: 1, identifier: "connected", cancelsIdentifier: "disconnected")
-            }
+            .subscribe(
+                onNext: { [weak self] characteristics in
+                    guard let self = self else { return }
 
-            return accelerometerDataCharacteristic.receiveNotificationUpdates(capacity: 1)
-        }
+                    self.accelerometerDataCharacteristic = characteristics[0]
+                    if !self.isConnected {
+                        self.isConnected = true
+                        self.updateTime()
+                        self.notify("Connected to van", delay: 1, identifier: "connected", cancelsIdentifier: "disconnected")
+                    }
+                },
+                onError: { [weak self] error in
+                    guard let self = self else { return }
 
-        dataUpdateFuture.onFailure { [unowned self] error in
-            self.present("disconnected: \(error)")
-            if self.isConnected {
-                self.isConnected = false
-                self.notify("Disconnected from van: \(error)", delay: 20, identifier: "disconnected", cancelsIdentifier: "connected")
-            }
-            self.peripheral?.disconnect()
-            self.restart()
-        }
-
-        dataUpdateFuture.onSuccess { data in
-            print("Got data \(data ?? Data())")
-        }
+                    self.present("disconnected: \(error)")
+                    if self.isConnected {
+                        self.isConnected = false
+                        self.notify("Disconnected from van: \(error)", delay: 20, identifier: "disconnected", cancelsIdentifier: "connected")
+                    }
+                    if let peripheral = self.peripheral?.peripheral {
+                        self.manager.centralManager.cancelPeripheralConnection(peripheral)
+                    }
+                    self.restart()
+                }
+            )
+            .disposed(by: centralDisposeBag)
     }
 
     @discardableResult
     private func writeToDevice(_ command: String) -> Bool {
-        guard let accelerometerDataCharacteristic = self.accelerometerDataCharacteristic else {
+        guard let accelerometerDataCharacteristic = accelerometerDataCharacteristic else {
             restart()
             return false
         }
-        _ = accelerometerDataCharacteristic.write(data: command.data(using: .utf8)!).result
+        _ = accelerometerDataCharacteristic
+            .writeValue(command.data(using: .utf8)!, type: .withResponse)
+            .subscribe(
+                onSuccess: { characteristic in
+                    
+                },
+                onError: { error in
+
+                }
+            )
+            .disposed(by: disposeBag)
+
         return true
     }
 
