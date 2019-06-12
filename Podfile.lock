@@ -1,32 +1,37 @@
 PODS:
-  - RxBluetoothKit (5.1.4):
-    - RxSwift (~> 4.0)
-  - RxCocoa (4.5.0):
-    - RxSwift (>= 4.4.2, ~> 4.4)
-  - RxCoreLocation (1.3.2):
-    - RxCoreLocation/Core (= 1.3.2)
-  - RxCoreLocation/Core (1.3.2):
-    - RxCocoa (~> 4.0)
-    - RxSwift (~> 4.0)
-  - RxSwift (4.5.0)
+  - RxBluetoothKit (5.2.1):
+    - RxSwift (~> 5.0)
+  - RxCocoa (5.0.0):
+    - RxRelay (~> 5)
+    - RxSwift (~> 5)
+  - RxCoreLocation (1.4.0):
+    - RxCoreLocation/Core (= 1.4.0)
+  - RxCoreLocation/Core (1.4.0):
+    - RxCocoa (~> 5.0)
+    - RxSwift (~> 5.0)
+  - RxRelay (5.0.0):
+    - RxSwift (~> 5)
+  - RxSwift (5.0.0)
 
 DEPENDENCIES:
-  - RxBluetoothKit (~> 5.1.4)
-  - RxCoreLocation (~> 1.3.2)
+  - RxBluetoothKit
+  - RxCoreLocation
 
 SPEC REPOS:
   https://github.com/cocoapods/specs.git:
     - RxBluetoothKit
     - RxCocoa
     - RxCoreLocation
+    - RxRelay
     - RxSwift
 
 SPEC CHECKSUMS:
-  RxBluetoothKit: d18f7beb5fd4d2b24659d57548e38d5d2fac885b
-  RxCocoa: cbf70265dc65a981d4ac982e513c10cf23df24a0
-  RxCoreLocation: 23d0f2f06fba5af57f2fa9064a5c165e75eb4c33
-  RxSwift: f172070dfd1a93d70a9ab97a5a01166206e1c575
+  RxBluetoothKit: 3a4ca066d4d6e87ec5cf77a81298830a9a833bf1
+  RxCocoa: fcf32050ac00d801f34a7f71d5e8e7f23026dcd8
+  RxCoreLocation: ac3a3d97dc5f4e779058f43c9327534f1e3fb95a
+  RxRelay: 4f7409406a51a55cd88483f21ed898c234d60f18
+  RxSwift: 8b0671caa829a763bbce7271095859121cbd895f
 
-PODFILE CHECKSUM: db5f2b054545052fa0dd6637ae94c762367e0bb4
+PODFILE CHECKSUM: 5784f0fbab2fc1a290e8fac31a228b724da0f974
 
 COCOAPODS: 1.5.3
