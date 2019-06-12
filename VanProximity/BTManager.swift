@@ -101,6 +101,8 @@ class BTManager {
                         return false
                     case .immediate, .near:
                         return true
+                    @unknown default:
+                        return false
                     }
                 }()
                 self.proximityState.onNext(near)
@@ -120,7 +122,7 @@ class BTManager {
         let content = UNMutableNotificationContent()
         content.title = ""
         content.body = message
-        content.sound = UNNotificationSound.default()
+        content.sound = UNNotificationSound.default
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
         let request = UNNotificationRequest(identifier: identifier ?? UUID().uuidString, content: content, trigger: trigger)
         let center = UNUserNotificationCenter.current()
@@ -199,7 +201,7 @@ class BTManager {
                         self.notify("Disconnected from van: \(error)", delay: 20, identifier: "disconnected", cancelsIdentifier: "connected")
                     }
                     if let peripheral = self.peripheral?.peripheral {
-                        self.manager.centralManager.cancelPeripheralConnection(peripheral)
+                        self.manager.manager.cancelPeripheralConnection(peripheral)
                     }
                     self.restart()
                 }
@@ -238,11 +240,11 @@ class BTManager {
     }
 
     private func startBackgroundHandler() {
-        var backgroundHandler = UIBackgroundTaskInvalid
+        var backgroundHandler = UIBackgroundTaskIdentifier.invalid
         backgroundHandler = UIApplication.shared.beginBackgroundTask {
-            guard backgroundHandler != UIBackgroundTaskInvalid else { return }
-            UIApplication.shared.endBackgroundTask(backgroundHandler)
-            backgroundHandler = UIBackgroundTaskInvalid
+            guard backgroundHandler != UIBackgroundTaskIdentifier.invalid else { return }
+            UIApplication.shared.endBackgroundTask(convertToUIBackgroundTaskIdentifier(backgroundHandler.rawValue))
+            backgroundHandler = UIBackgroundTaskIdentifier.invalid
         }
     }
 
@@ -278,4 +280,9 @@ class BTManager {
         dateFormat.timeZone = TimeZone.current
         writeToDevice(String(format: "T%@;%@", dateFormat.string(from: Date()), dateFormat.timeZone.identifier))
     }
+}
+
+// Helper function inserted by Swift 4.2 migrator.
+fileprivate func convertToUIBackgroundTaskIdentifier(_ input: Int) -> UIBackgroundTaskIdentifier {
+	return UIBackgroundTaskIdentifier(rawValue: input)
 }

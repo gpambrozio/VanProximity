@@ -18,6 +18,8 @@ private extension UIDevice.BatteryState {
             return false
         case .charging, .full:
             return true
+        @unknown default:
+            return false
         }
     }
 }
@@ -49,14 +51,14 @@ class LocationManager: NSObject {
         let batteryLevelPromise = PublishSubject<Float>()
 
         NotificationCenter.default.addObserver(
-            forName: .UIDeviceBatteryStateDidChange,
+            forName: UIDevice.batteryStateDidChangeNotification,
             object: nil,
             queue: OperationQueue.main) { [batteryStatePromise, device] _ in
                 batteryStatePromise.onNext(device.batteryState)
             }
 
         NotificationCenter.default.addObserver(
-            forName: .UIDeviceBatteryLevelDidChange,
+            forName: UIDevice.batteryLevelDidChangeNotification,
             object: nil,
             queue: OperationQueue.main) { [batteryLevelPromise, device] _ in
                 batteryLevelPromise.onNext(device.batteryLevel)

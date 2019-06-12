@@ -243,6 +243,7 @@
 				TargetAttributes = {
 					EC8D8FB02138FF6D0002ABA3 = {
 						CreatedOnToolsVersion = 9.4.1;
+						LastSwiftMigration = 1020;
 						SystemCapabilities = {
 							com.apple.BackgroundModes = {
 								enabled = 1;
@@ -251,10 +252,12 @@
 					};
 					EC8D8FC42138FF6E0002ABA3 = {
 						CreatedOnToolsVersion = 9.4.1;
+						LastSwiftMigration = 1020;
 						TestTargetID = EC8D8FB02138FF6D0002ABA3;
 					};
 					EC8D8FCF2138FF6E0002ABA3 = {
 						CreatedOnToolsVersion = 9.4.1;
+						LastSwiftMigration = 1020;
 						TestTargetID = EC8D8FB02138FF6D0002ABA3;
 					};
 				};
@@ -580,7 +583,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = br.eng.gustavo.VanProximity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -599,7 +602,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = br.eng.gustavo.VanProximity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -620,7 +623,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = br.eng.gustavo.VanProximityTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VanProximity.app/VanProximity";
 			};
@@ -642,7 +645,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = br.eng.gustavo.VanProximityTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VanProximity.app/VanProximity";
 			};
@@ -663,7 +666,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = br.eng.gustavo.VanProximityUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = VanProximity;
 			};
@@ -684,7 +687,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = br.eng.gustavo.VanProximityUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = VanProximity;
 			};
