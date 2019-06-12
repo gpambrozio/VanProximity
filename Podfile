@@ -20,3 +20,14 @@ target 'VanProximity' do
   end
 
 end
+
+post_install do |installer_representation|
+  # So that every pod gets Testability enabled on UnitTest builds.
+  installer_representation.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+
+      config.build_settings['SWIFT_VERSION'] = '5.0'
+
+    end
+  end
+end
