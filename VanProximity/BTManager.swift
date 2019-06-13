@@ -64,8 +64,6 @@ class BTManager {
                 self?.notify("Van is \(proximity ? "near" : "far")")
             })
             .disposed(by: disposeBag)
-
-        updateState()
     }
 
     func start() {

@@ -64,7 +64,11 @@ class LocationManager: NSObject {
                 batteryLevelPromise.onNext(device.batteryLevel)
             }
 
-        let combined = PublishSubject.combineLatest(batteryStatePromise, batteryLevelPromise, BTManager.shared.stateStream)
+        let combined = PublishSubject.combineLatest(
+            batteryStatePromise.startWith(device.batteryState),
+            batteryLevelPromise.startWith(device.batteryLevel),
+            BTManager.shared.stateStream.startWith((isRanging: false, isConnected: false))
+        )
         updateLocationState = combined.map { (batteryState, batteryLevel, btManagerState) -> (Bool, Float, Bool) in
             (batteryState.isCharging, batteryLevel, btManagerState.isConnected)
         }
@@ -96,10 +100,6 @@ class LocationManager: NSObject {
                 }
             })
             .disposed(by: disposeBag)
-
-        // Send current as notification only fires when changed
-        batteryStatePromise.onNext(device.batteryState)
-        batteryLevelPromise.onNext(device.batteryLevel)
     }
 
     private var isUpdatingLocation = false
