@@ -166,12 +166,16 @@ class BTManager {
         manager.observeState()
             .startWith(manager.state)
             .filter { $0 == .poweredOn }
-            .flatMapLatest { [manager] _ in
-                manager.scanForPeripherals(withServices: [serviceUUID])
-            }
-            .flatMapLatest { [weak self] scanned -> Observable<Peripheral> in
-                self?.peripheral = scanned.peripheral
-                return scanned.peripheral.establishConnection()
+            .flatMapLatest { [manager] _ -> Observable<Peripheral> in
+                let connected = manager.retrieveConnectedPeripherals(withServices: [serviceUUID])
+                if let peripheral = connected.first {
+                    return Observable.just(peripheral)
+                }
+                return manager.scanForPeripherals(withServices: [serviceUUID])
+                    .flatMapLatest { [weak self] scanned -> Observable<Peripheral> in
+                        self?.peripheral = scanned.peripheral
+                        return scanned.peripheral.establishConnection()
+                    }
             }
             .flatMapLatest {
                 $0.discoverServices([serviceUUID])
@@ -194,13 +198,13 @@ class BTManager {
                     guard let self = self else { return }
 
                     self.present("disconnected: \(error)")
-                    if self.isConnected {
-                        self.isConnected = false
-                        self.notify("Disconnected from van: \(error)", delay: 20, identifier: "disconnected", cancelsIdentifier: "connected")
-                    }
+                    self.notify("Disconnected from van: \(error)", delay: 20, identifier: "disconnected", cancelsIdentifier: "connected")
                     if let peripheral = self.peripheral?.peripheral {
                         self.manager.manager.cancelPeripheralConnection(peripheral)
                     }
+                    self.isConnected = false
+                    self.peripheral = nil
+                    self.accelerometerDataCharacteristic = nil
                     self.restart()
                 }
             )
