@@ -86,7 +86,7 @@ class LocationManager: NSObject {
         locationManager.startUpdatingLocation()
 
         let shouldUpdateLocation = updateLocationState.map { isCharging, batteryLevel, isConnected in
-            return isConnected && (isCharging || batteryLevel >= 8)
+            return isConnected && (isCharging || batteryLevel >= 0.85)
         }
 
         shouldUpdateLocation
