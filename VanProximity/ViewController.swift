@@ -15,7 +15,6 @@ class ViewController: UIViewController {
     @IBOutlet var rangingLabel: UILabel!
     @IBOutlet var updatingLocationLabel: UILabel!
     @IBOutlet var locationUpdateLabel: UILabel!
-    @IBOutlet var stateButton: UIButton!
     @IBOutlet var locationUpdateStateLabel: UILabel!
 
     @IBOutlet weak var eventsTextView: UITextView!
@@ -77,8 +76,12 @@ class ViewController: UIViewController {
         self.eventsTextView.text = ""
     }
 
-    @IBAction func stateTapped(_ sender: Any) {
-        stateButton.setTitle("State: \(BTManager.shared.state)", for: .normal)
+    @IBAction func lockTapped(_ sender: Any) {
+        BTManager.shared.lock(true)
+    }
+
+    @IBAction func unlockTapped(_ sender: Any) {
+        BTManager.shared.lock(false)
     }
 
     @IBAction func restartTapped(_ sender: Any) {

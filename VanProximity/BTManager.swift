@@ -276,6 +276,10 @@ class BTManager {
         }
     }
 
+    public func lock(_ lock: Bool) {
+        writeToDevice("l\((lock ? "L" : "U"))")
+    }
+
     private func updateTime() {
         let dateFormat = DateFormatter()
         dateFormat.dateFormat = "MMddHHmmyy.ss"

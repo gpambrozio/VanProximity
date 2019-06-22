@@ -19,56 +19,71 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="5" translatesAutoresizingMaskIntoConstraints="NO" id="JDV-5Z-7z0">
-                                <rect key="frame" x="10" y="30" width="355" height="192.5"/>
+                                <rect key="frame" x="10" y="30" width="355" height="167.5"/>
                                 <subviews>
+                                    <stackView opaque="NO" contentMode="scaleToFill" distribution="fillEqually" spacing="5" translatesAutoresizingMaskIntoConstraints="NO" id="FME-Tz-f8G">
+                                        <rect key="frame" x="0.0" y="0.0" width="355" height="40"/>
+                                        <subviews>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="EfZ-0t-sLP">
+                                                <rect key="frame" x="0.0" y="0.0" width="115" height="40"/>
+                                                <state key="normal" title="Lock"/>
+                                                <connections>
+                                                    <action selector="lockTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="qLC-K9-VN3"/>
+                                                </connections>
+                                            </button>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="PfC-Re-jg8">
+                                                <rect key="frame" x="120" y="0.0" width="115" height="40"/>
+                                                <state key="normal" title="Unlock"/>
+                                                <connections>
+                                                    <action selector="unlockTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="tHE-E1-7zR"/>
+                                                </connections>
+                                            </button>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="VwM-vv-Iw7">
+                                                <rect key="frame" x="240" y="0.0" width="115" height="40"/>
+                                                <state key="normal" title="Restart"/>
+                                                <connections>
+                                                    <action selector="restartTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="7lX-9w-WVk"/>
+                                                </connections>
+                                            </button>
+                                        </subviews>
+                                        <constraints>
+                                            <constraint firstAttribute="height" constant="40" id="v65-28-Io1"/>
+                                        </constraints>
+                                    </stackView>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="HHp-Ya-Fji">
-                                        <rect key="frame" x="0.0" y="0.0" width="355" height="20.5"/>
+                                        <rect key="frame" x="0.0" y="45" width="355" height="20.5"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <nil key="textColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="IvD-xa-0ha">
-                                        <rect key="frame" x="0.0" y="25.5" width="355" height="20.5"/>
+                                        <rect key="frame" x="0.0" y="70.5" width="355" height="20.5"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <nil key="textColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="us7-ud-Atg">
-                                        <rect key="frame" x="0.0" y="51" width="355" height="20.5"/>
+                                        <rect key="frame" x="0.0" y="96" width="355" height="20.5"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <nil key="textColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="sgN-XZ-CYE">
-                                        <rect key="frame" x="0.0" y="76.5" width="355" height="20.5"/>
+                                        <rect key="frame" x="0.0" y="121.5" width="355" height="20.5"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <nil key="textColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="jSe-c7-xcz">
-                                        <rect key="frame" x="0.0" y="102" width="355" height="20.5"/>
+                                        <rect key="frame" x="0.0" y="147" width="355" height="20.5"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <nil key="textColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="EfZ-0t-sLP">
-                                        <rect key="frame" x="0.0" y="127.5" width="355" height="30"/>
-                                        <state key="normal" title="State"/>
-                                        <connections>
-                                            <action selector="stateTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="qLC-K9-VN3"/>
-                                        </connections>
-                                    </button>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="VwM-vv-Iw7">
-                                        <rect key="frame" x="0.0" y="162.5" width="355" height="30"/>
-                                        <state key="normal" title="Restart"/>
-                                        <connections>
-                                            <action selector="restartTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="7lX-9w-WVk"/>
-                                        </connections>
-                                    </button>
                                 </subviews>
                             </stackView>
                             <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" editable="NO" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="AeM-Tp-n3p">
-                                <rect key="frame" x="10" y="232.5" width="355" height="384.5"/>
+                                <rect key="frame" x="10" y="207.5" width="355" height="409.5"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                 <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
@@ -102,7 +117,6 @@
                         <outlet property="locationUpdateLabel" destination="sgN-XZ-CYE" id="Mr0-W3-kMa"/>
                         <outlet property="locationUpdateStateLabel" destination="jSe-c7-xcz" id="V6l-Cl-MIf"/>
                         <outlet property="rangingLabel" destination="IvD-xa-0ha" id="aPn-gT-A0H"/>
-                        <outlet property="stateButton" destination="EfZ-0t-sLP" id="pGK-hc-C1q"/>
                         <outlet property="updatingLocationLabel" destination="us7-ud-Atg" id="1zY-SN-0lK"/>
                     </connections>
                 </viewController>
