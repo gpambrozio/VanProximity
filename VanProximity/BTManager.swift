@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import UserNotifications
 import CoreLocation
 import CoreBluetooth
 
@@ -60,8 +59,8 @@ class BTManager {
         proximityState
             .debounce(.seconds(10), scheduler: MainScheduler())
             .distinctUntilChanged()
-            .subscribe(onNext: { [weak self] proximity in
-                self?.notify("Van is \(proximity ? "near" : "far")")
+            .subscribe(onNext: { proximity in
+                NotificationManager.shared.notify("Van is \(proximity ? "near" : "far")")
             })
             .disposed(by: disposeBag)
     }
@@ -116,43 +115,6 @@ class BTManager {
         .disposed(by: disposeBag)
     }
 
-    private func addNotification(_ message: String, delay: TimeInterval, identifier: String?) {
-        let content = UNMutableNotificationContent()
-        content.title = ""
-        content.body = message
-        content.sound = UNNotificationSound.default
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
-        let request = UNNotificationRequest(identifier: identifier ?? UUID().uuidString, content: content, trigger: trigger)
-        let center = UNUserNotificationCenter.current()
-        center.add(request)
-        center.getDeliveredNotifications { (notifications) in
-            let idsToRemove = notifications.sorted(by: { (n1, n2) -> Bool in
-                n2.date < n1.date
-            }).map { $0.request.identifier }
-            guard idsToRemove.count > 10 else { return }
-            DispatchQueue.main.async {
-                center.removeDeliveredNotifications(withIdentifiers: [] + idsToRemove[10...])
-            }
-        }
-    }
-
-    private func notify(_ message: String, delay: TimeInterval = 0.1, identifier: String? = nil, cancelsIdentifier: String? = nil) {
-        statusStream.onNext(message)
-
-        if let cancelsIdentifier = cancelsIdentifier {
-            let center = UNUserNotificationCenter.current()
-            center.getPendingNotificationRequests { [weak self] (notifications) in
-                if notifications.first(where: { n -> Bool in n.identifier == cancelsIdentifier }) != nil {
-                    center.removePendingNotificationRequests(withIdentifiers: [cancelsIdentifier])
-                } else {
-                    self?.addNotification(message, delay: delay, identifier: identifier)
-                }
-            }
-        } else {
-            addNotification(message, delay: delay, identifier: identifier)
-        }
-    }
-
     private func present(_ message: String) {
         statusStream.onNext(message)
     }
@@ -191,14 +153,14 @@ class BTManager {
                     if !self.isConnected {
                         self.isConnected = true
                         self.updateTime()
-                        self.notify("Connected to van", delay: 1, identifier: "connected", cancelsIdentifier: "disconnected")
+                        NotificationManager.shared.notify("Connected to van", category: .connected)
                     }
                 },
                 onError: { [weak self] error in
                     guard let self = self else { return }
 
                     self.present("disconnected: \(error)")
-                    self.notify("Disconnected from van: \(error)", delay: 20, identifier: "disconnected", cancelsIdentifier: "connected")
+                    NotificationManager.shared.notify("Disconnected from van: \(error)", category: .disconnected)
                     if let peripheral = self.peripheral?.peripheral {
                         self.manager.manager.cancelPeripheralConnection(peripheral)
                     }
@@ -236,7 +198,7 @@ class BTManager {
     private func setInsideRegion() {
         if !inRegion {
             inRegion = true
-            notify("Entered region.", delay: 1, identifier: "enteredRegion", cancelsIdentifier: "leftRegion")
+            NotificationManager.shared.notify("Entered region.", category: .enteredRegion)
         }
         startBackgroundHandler()
     }
@@ -253,7 +215,7 @@ class BTManager {
     private func setOutsideRegion() {
         if inRegion {
             inRegion = false
-            notify("Exited region.", delay: 30, identifier: "leftRegion", cancelsIdentifier: "enteredRegion")
+            NotificationManager.shared.notify("Exited region.", category: .leftRegion)
         }
     }
 

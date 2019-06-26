@@ -24,8 +24,12 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        BTManager.shared
-            .statusStream
+        let statusStreams = PublishSubject.merge([
+            BTManager.shared.statusStream,
+            NotificationManager.shared.statusStream
+        ])
+
+        statusStreams
             .subscribe(onNext: { [unowned self] message in
                 let now = DateFormatter.init()
                 now.dateStyle = .none
