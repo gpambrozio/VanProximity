@@ -47,7 +47,10 @@ class BTManager {
     private let beaconRegion: CLBeaconRegion
     private let beaconUUID = UUID(uuidString: "A495DEAD-C5B1-4B44-B512-1370F02D74DE")!
 
-    private let manager = CentralManager(options: [CBCentralManagerOptionRestoreIdentifierKey : "us.gnos.BlueCap.central-manager-example" as NSString])
+    private let managerFactory: () -> CentralManager = {
+        return CentralManager(options: [CBCentralManagerOptionRestoreIdentifierKey : "us.gnos.BlueCap.central-manager-example" as NSString])
+    }
+    private var manager: CentralManager
 
     private var peripheral: Peripheral?
     private var accelerometerDataCharacteristic: Characteristic?
@@ -55,6 +58,7 @@ class BTManager {
     private let disposeBag = DisposeBag()
 
     private init() {
+        manager = managerFactory()
         beaconRegion = CLBeaconRegion(proximityUUID: beaconUUID, identifier: "Example Beacon")
         proximityState
             .debounce(.seconds(10), scheduler: MainScheduler())
@@ -125,6 +129,7 @@ class BTManager {
         let dataUUID = CBUUID(string: "ec0e")
 
         centralDisposeBag = DisposeBag()
+        manager = managerFactory()
         manager.observeState()
             .startWith(manager.state)
             .filter { $0 == .poweredOn }
@@ -160,7 +165,9 @@ class BTManager {
                     guard let self = self else { return }
 
                     self.present("disconnected: \(error)")
-                    NotificationManager.shared.notify("Disconnected from van: \(error)", category: .disconnected)
+                    if self.isConnected {
+                        NotificationManager.shared.notify("Disconnected from van: \(error)", category: .disconnected)
+                    }
                     if let peripheral = self.peripheral?.peripheral {
                         self.manager.manager.cancelPeripheralConnection(peripheral)
                     }
