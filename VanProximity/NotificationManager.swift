@@ -38,6 +38,15 @@ class NotificationManager: NSObject {
             case .enteredRegion: return 30
             }
         }
+
+        var hasSound: Bool {
+            switch self {
+            case .connected: return true
+            case .disconnected: return false
+            case .leftRegion: return false
+            case .enteredRegion: return false
+            }
+        }
     }
     static let shared = NotificationManager()
     public let statusStream = PublishSubject<String>()
@@ -70,8 +79,10 @@ class NotificationManager: NSObject {
         content.body = message
         if let category = category {
             content.categoryIdentifier = category.rawValue
+            content.sound = category.hasSound ? .default : .none
+        } else {
+            content.sound = .none
         }
-        content.sound = UNNotificationSound.default
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
         let request = UNNotificationRequest(identifier: category?.rawValue ?? UUID().uuidString, content: content, trigger: trigger)
         let center = UNUserNotificationCenter.current()
