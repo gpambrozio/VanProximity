@@ -61,10 +61,13 @@ class BTManager {
         manager = managerFactory()
         beaconRegion = CLBeaconRegion(proximityUUID: beaconUUID, identifier: "Example Beacon")
         proximityState
-            .debounce(.seconds(10), scheduler: MainScheduler())
+            .debounce(.seconds(5), scheduler: MainScheduler())
             .distinctUntilChanged()
-            .subscribe(onNext: { proximity in
+            .subscribe(onNext: { [unowned self] proximity in
                 NotificationManager.shared.notify("Van is \(proximity ? "near" : "far")")
+                if proximity && !self.isConnected {
+                    self.startCentral()
+                }
             })
             .disposed(by: disposeBag)
     }
@@ -82,7 +85,7 @@ class BTManager {
         let beaconRangingFuture = locationManager.rx.isRangingAvailable.flatMapLatest { [locationManager, beaconRegion] available -> Observable<CLRegionEvent> in
             locationManager.startMonitoring(for: beaconRegion)
             return locationManager.rx.didReceiveRegion.asObservable()
-        }.flatMapLatest { [unowned self]  (manager: CLLocationManager, region: CLRegion, state: CLRegionEventState) -> Observable<CLBeaconsEvent> in
+        }.flatMapLatest { [unowned self] (manager: CLLocationManager, region: CLRegion, state: CLRegionEventState) -> Observable<CLBeaconsEvent> in
             manager.startRangingBeacons(in: self.beaconRegion)
             self.isRanging = true
             return manager.rx.didRangeBeacons.asObservable()
